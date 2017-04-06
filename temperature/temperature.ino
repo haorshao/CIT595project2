@@ -34,7 +34,7 @@
 const byte NumberLookup[16] =   {0x3F,0x06,0x5B,0x4F,0x66,
                                  0x6D,0x7D,0x07,0x7F,0x6F, 
                                  0x77,0x7C,0x39,0x5E,0x79,0x71};
-
+int led = 13;
 /* Function prototypes */
 void Cal_temp (int&, byte&, byte&, bool&);
 void Dis_7SEG (int, byte, byte, bool);
@@ -55,7 +55,9 @@ void setup()
   Wire.begin();        /* Join I2C bus */
   pinMode(RED, OUTPUT);    
   pinMode(GREEN, OUTPUT);  
-  pinMode(BLUE, OUTPUT);   
+  pinMode(BLUE, OUTPUT);  
+  pinMode(led, OUTPUT); 
+  digitalWrite(led, LOW);
   delay(500);          /* Allow system to stabilize */
 } 
 
@@ -68,6 +70,13 @@ void setup()
  
 void loop() 
 { 
+  if(Serial.available() > 0){
+    
+    digitalWrite(led, HIGH);   // turn the LED on (HIGH is the voltage level)
+    delay(1000);                       // wait for a second
+//    digitalWrite(led, LOW);    // turn the LED off by making the voltage LOW
+//    delay(1000);                       // wait for a second
+  }
   int Decimal;
   byte Temperature_H, Temperature_L, counter, counter2;
   bool IsPositive;

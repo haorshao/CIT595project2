@@ -28,13 +28,15 @@ struct usbFuncInput{
 struct serverFuncInput{
   deque<double>* vec;
   int PORT_NUMBER;
+  char* arduinoPort;
 } ;
 void readusb(deque<double>*, char*);
 void* usbFunc(void* p){
   usbFuncInput input = *(usbFuncInput*)p;
   readusb(input.vec, input.arduinoPort);
 }
-int start_server(int PORT_NUMBER, deque<double>* input)
+void sendusb(char*);
+int start_server(int PORT_NUMBER, deque<double>* input, char* arduinoPort)
 {
 
       // structs to represent the server and client
@@ -91,7 +93,10 @@ int start_server(int PORT_NUMBER, deque<double>* input)
           request[bytes_received] = '\0';
           cout << "Here comes the message:" << endl;
           cout << request << endl;
-
+          if(request[5] == 'a'){
+            cout << "blink" << endl;
+            sendusb(arduinoPort);
+          }
 
           
           // this is the message that we'll send back
@@ -114,8 +119,8 @@ int start_server(int PORT_NUMBER, deque<double>* input)
           string minTempStr = to_string(minTemp);
           string averageTemp = to_string(sumTemp / input->size());
           string maxTempStr = to_string(maxTemp);
-          string reply = "{\n\"name\": \"" + temper + "\"\n" + "\"min\": \"" + minTempStr + "\"\n" + "\"max\": \"" + maxTempStr + "\"\n" + "\"average\": \"" + averageTemp + "\"\n}\n";
-          // string reply = "{\n\"name\": \"cit595\"\n}\n";
+          string reply = "{\n\"name\": \"" + temper + "\",\n" + "\"min\": \"" + minTempStr + "\",\n" + "\"max\": \"" + maxTempStr + "\",\n" + "\"average\": \"" + averageTemp + "\"\n}\n";
+          // string reply = "{\n\"name\": \"cit595\",\n\"average\": \"average\"\n}\n";
           // cout << reply << endl;
           
           // 6. send: send the message over the socket
@@ -135,7 +140,7 @@ int start_server(int PORT_NUMBER, deque<double>* input)
 } 
 void* serverFunc(void* p){
   serverFuncInput input = *(serverFuncInput*)p;
-  start_server(input.PORT_NUMBER, input.vec);
+  start_server(input.PORT_NUMBER, input.vec, input.arduinoPort);
 }
 int main(int argc, char *argv[])
 {
@@ -148,19 +153,18 @@ int main(int argc, char *argv[])
 
 
   // string port();
+
   int r = 0;
   pthread_t readUSBThread, serverThread;
   deque<double>* temp = new deque<double>();
-  // temp->push_back(25.01);
-  // vector<double>& tempRef = temp;
   usbFuncInput usbInput;
   usbInput.vec = temp;
   usbInput.arduinoPort = argv[1];
   serverFuncInput serverInput;
   serverInput.vec = temp;
   serverInput.PORT_NUMBER = atoi(argv[2]);
+  serverInput.arduinoPort = argv[1];
   r = pthread_create(&readUSBThread, NULL, &usbFunc, &usbInput);
-  // cout << "readUSBThread created" << endl;
   if(r != 0){
     cout << "readUSBThread ERROR!" << endl;
   }
@@ -178,11 +182,5 @@ int main(int argc, char *argv[])
   if(r != 0){
     cout << "serverThread join ERROR!" << endl;
   }
-  // readusb(tempRef, argv[1]);// argv[1] for arduino port
-  // int PORT_NUMBER = atoi(argv[2]);//argv[2] for server port num
-  // start_server(PORT_NUMBER, temp);
-  // for(int i = 0; i < temp.size(); i++){
-  //   cout << temp[i] << endl;
-  // }
 }
 
