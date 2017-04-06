@@ -41,6 +41,12 @@ double convertTemp(double input){
   double fah = input * 1.8 + 32;
   return fah;
 }
+// void* quitcheck(void* p){
+//   char* input = (char*)p;
+//   if(input[0] == 'q'){
+
+//   }
+// }
 int start_server(int PORT_NUMBER, deque<double>* input, char* arduinoPort)
 {
 
@@ -175,6 +181,7 @@ int main(int argc, char *argv[])
   // string port();
 
   int r = 0;
+  // pthread_t quitcheck;
   pthread_t readUSBThread, serverThread;
   deque<double>* temp = new deque<double>();
   usbFuncInput usbInput;
