@@ -36,6 +36,11 @@ void* usbFunc(void* p){
   readusb(input.vec, input.arduinoPort);
 }
 void sendusb(char*);
+bool iscelsius;//true for celsius false for fah;
+double convertTemp(double input){
+  double fah = input * 1.8 + 32;
+  return fah;
+}
 int start_server(int PORT_NUMBER, deque<double>* input, char* arduinoPort)
 {
 
@@ -97,6 +102,12 @@ int start_server(int PORT_NUMBER, deque<double>* input, char* arduinoPort)
             cout << "blink" << endl;
             sendusb(arduinoPort);
           }
+          if(request[5] == 'c'){
+            iscelsius = true;
+          }
+          if(request[5] == 'f'){
+            iscelsius = false;
+          }
 
           
           // this is the message that we'll send back
@@ -105,8 +116,8 @@ int start_server(int PORT_NUMBER, deque<double>* input, char* arduinoPort)
                "name": "cit595"
             }
           */
+
           double curTemp = (*input)[input->size() - 1];
-          string temper = to_string(curTemp);
           deque<double>::iterator it;
           double minTemp = curTemp;
           double maxTemp = curTemp;
@@ -116,10 +127,18 @@ int start_server(int PORT_NUMBER, deque<double>* input, char* arduinoPort)
             minTemp = min(minTemp, (*it));
             maxTemp = max(maxTemp, (*it));
           }
+          double aveTemp = sumTemp / input->size();
+          if(!iscelsius){
+            curTemp = convertTemp(curTemp);
+            minTemp = convertTemp(minTemp);
+            maxTemp = convertTemp(maxTemp);
+            aveTemp = convertTemp(aveTemp); 
+          }
+          string temper = to_string(curTemp);
           string minTempStr = to_string(minTemp);
-          string averageTemp = to_string(sumTemp / input->size());
+          string averageTemp = to_string(aveTemp);
           string maxTempStr = to_string(maxTemp);
-          string reply = "{\n\"name\": \"" + temper + "\",\n" + "\"min\": \"" + minTempStr + "\",\n" + "\"max\": \"" + maxTempStr + "\",\n" + "\"average\": \"" + averageTemp + "\"\n}\n";
+          string reply = "{\n\"curTemp\": \"curTemp: " + temper + "\",\n" + "\"min\": \"minTemp: " + minTempStr + "\",\n" + "\"max\": \"maxTemp: " + maxTempStr + "\",\n" + "\"average\": \"averageTemp: " + averageTemp + "\"\n}\n";
           // string reply = "{\n\"name\": \"cit595\",\n\"average\": \"average\"\n}\n";
           // cout << reply << endl;
           
@@ -142,6 +161,7 @@ void* serverFunc(void* p){
   serverFuncInput input = *(serverFuncInput*)p;
   start_server(input.PORT_NUMBER, input.vec, input.arduinoPort);
 }
+
 int main(int argc, char *argv[])
 {
   // check the number of arguments
