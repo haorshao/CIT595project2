@@ -18,8 +18,11 @@ using namespace std;
 //   tcsetattr(fd, TCSANOW, &pts);
 // }
 void configure(int);
-void sendusb(char* port){
-	char info[2] = {'a', 'b'}; 
+void sendusb(char* port, string inputMessage){
+	char info[1024];
+	strcpy(info, inputMessage.c_str()); 
+	// char* info = inputMessage.c_str();
+	// char 
 	cout << "start send " << endl;
 	int fd = open(port, O_RDWR | O_NOCTTY | O_NDELAY);
 

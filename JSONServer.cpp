@@ -35,18 +35,14 @@ void* usbFunc(void* p){
   usbFuncInput input = *(usbFuncInput*)p;
   readusb(input.vec, input.arduinoPort);
 }
-void sendusb(char*);
+void sendusb(char*, string);
 bool iscelsius;//true for celsius false for fah;
+bool isAlertMod = false;
 double convertTemp(double input){
   double fah = input * 1.8 + 32;
   return fah;
 }
-// void* quitcheck(void* p){
-//   char* input = (char*)p;
-//   if(input[0] == 'q'){
-
-//   }
-// }
+double alertTemp = 0;
 int start_server(int PORT_NUMBER, deque<double>* input, char* arduinoPort)
 {
 
@@ -90,6 +86,7 @@ int start_server(int PORT_NUMBER, deque<double>* input, char* arduinoPort)
      
       while(1){
         // 4. accept: wait here until we get a connection on that port
+        isAlertMod = false;
         int sin_size = sizeof(struct sockaddr_in);
         int fd = accept(sock, (struct sockaddr *)&client_addr,(socklen_t *)&sin_size);
         cout << "Server got a connection from " << inet_ntoa(client_addr.sin_addr) << ":" << ntohs(client_addr.sin_port) << endl;
@@ -106,16 +103,52 @@ int start_server(int PORT_NUMBER, deque<double>* input, char* arduinoPort)
           cout << request << endl;
           if(request[5] == 'a'){
             cout << "blink" << endl;
-            sendusb(arduinoPort);
+            // sendusb(arduinoPort);
           }
           if(request[5] == 'c'){
             iscelsius = true;
+            string inputMessage = "a";
+            sendusb(arduinoPort, inputMessage);
           }
           if(request[5] == 'f'){
             iscelsius = false;
+            string inputMessage = "b";//b for fran
+            sendusb(arduinoPort, inputMessage);
           }
-
-          
+          if(request[5] == 's'){
+            string inputMessage = "s";//stand by start request
+            sendusb(arduinoPort, inputMessage);
+            // isAlertMod = false;
+          }
+          if(request[5] == 'e'){
+            string inputMessage = "e";//stand by end request
+            sendusb(arduinoPort, inputMessage);
+          }
+          if(request[6] == '8'){
+            alertTemp = 20;
+            isAlertMod = true;
+          }
+          if(request[6] == '9'){
+            alertTemp = 22;
+            isAlertMod = true;
+          }
+          if(request[6] == '0'){
+            alertTemp = 24;
+            isAlertMod = true;  
+          }
+          if(request[6] == '1'){
+            alertTemp = 26;
+            isAlertMod = true;
+          }
+          if(request[6] == '2'){
+            alertTemp = 28;
+            isAlertMod = true;
+            cout << "awesdf" << endl;
+          }
+          if(request[6] == '3'){
+            alertTemp = 30;
+            isAlertMod = true;
+          }
           // this is the message that we'll send back
           /* it actually looks like this:
             {
@@ -123,11 +156,32 @@ int start_server(int PORT_NUMBER, deque<double>* input, char* arduinoPort)
             }
           */
 
+          if(isAlertMod){
+            while(true){
+              double curTemp = (*input)[input->size() - 1];
+              if(curTemp > alertTemp){
+                string alertreply = "{\n\"alert\": \"true\"\n}";
+                send(fd, alertreply.c_str(), alertreply.length(), 0);
+                cout << "Server sent message: " << alertreply << endl;
+                close(fd);
+                break;
+              }
+            }
+            continue;
+          }
           double curTemp = (*input)[input->size() - 1];
           deque<double>::iterator it;
           double minTemp = curTemp;
           double maxTemp = curTemp;
           double sumTemp = 0;
+          string alertreply;
+          if(isAlertMod){
+            cout << "alert start" << endl;
+            cout << "cur temp is : " << curTemp << endl;
+            if(curTemp > alertTemp){
+              alertreply = "{\n\"alert\": \"true\"\n}";
+            }
+          }
           for(it = (*input).begin(); it != (*input).end(); it++){
             sumTemp += (*it);
             minTemp = min(minTemp, (*it));
@@ -145,9 +199,12 @@ int start_server(int PORT_NUMBER, deque<double>* input, char* arduinoPort)
           string averageTemp = to_string(aveTemp);
           string maxTempStr = to_string(maxTemp);
           string reply = "{\n\"curTemp\": \"curTemp: " + temper + "\",\n" + "\"min\": \"minTemp: " + minTempStr + "\",\n" + "\"max\": \"maxTemp: " + maxTempStr + "\",\n" + "\"average\": \"averageTemp: " + averageTemp + "\"\n}\n";
-          // string reply = "{\n\"name\": \"cit595\",\n\"average\": \"average\"\n}\n";
-          // cout << reply << endl;
-          
+          if(isAlertMod){
+            if(curTemp > alertTemp){
+              reply = alertreply;
+              cout << reply << endl;
+            }
+          }          
           // 6. send: send the message over the socket
           // note that the second argument is a char*, and the third is the number of chars
 
@@ -170,18 +227,7 @@ void* serverFunc(void* p){
 
 int main(int argc, char *argv[])
 {
-  // check the number of arguments
-  // if (argc != 3)
-  //   {
-  //     cout << endl << "main function input ERROR!" << endl;
-  //     exit(0);
-  //   }
-
-
-  // string port();
-
   int r = 0;
-  // pthread_t quitcheck;
   pthread_t readUSBThread, serverThread;
   deque<double>* temp = new deque<double>();
   usbFuncInput usbInput;
@@ -209,5 +255,10 @@ int main(int argc, char *argv[])
   if(r != 0){
     cout << "serverThread join ERROR!" << endl;
   }
+  
+  // string inputMessage = "b";
+  // sendusb(argv[1], inputMessage);
+  // cout << inputMessage << endl;
+  
 }
 

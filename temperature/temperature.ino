@@ -35,6 +35,7 @@ const byte NumberLookup[16] =   {0x3F,0x06,0x5B,0x4F,0x66,
                                  0x6D,0x7D,0x07,0x7F,0x6F, 
                                  0x77,0x7C,0x39,0x5E,0x79,0x71};
 int led = 13;
+int incomingByte = 0;
 /* Function prototypes */
 void Cal_temp (int&, byte&, byte&, bool&);
 void Dis_7SEG (int, byte, byte, bool);
@@ -57,6 +58,7 @@ void setup()
   pinMode(GREEN, OUTPUT);  
   pinMode(BLUE, OUTPUT);  
   pinMode(led, OUTPUT); 
+  
   digitalWrite(led, LOW);
   delay(500);          /* Allow system to stabilize */
 } 
@@ -70,16 +72,25 @@ void setup()
  
 void loop() 
 { 
-  if(Serial.available() > 0){
-    
-    digitalWrite(led, HIGH);   // turn the LED on (HIGH is the voltage level)
-    delay(1000);                       // wait for a second
-//    digitalWrite(led, LOW);    // turn the LED off by making the voltage LOW
-//    delay(1000);                       // wait for a second
-  }
+//  while(1){
+//    if(Serial.available() > 0){
+//    //read message from the server
+//        incomingByte = Serial.read();
+//        Serial.print("receive message: ");
+//        Serial.print(incomingByte);  
+//    }else{
+//        Serial.print("nothing\n");
+//        delay(1000);
+//    }    
+//  }
+
   int Decimal;
+  int Fah_Decimal;
   byte Temperature_H, Temperature_L, counter, counter2;
+  byte Fah_H;
   bool IsPositive;
+  bool IsCel = true;
+  bool IsStandBy = false;
   
   /* Configure 7-Segment to 12mA segment output current, Dynamic mode, 
      and Digits 1, 2, 3 AND 4 are NOT blanked */
@@ -101,7 +112,6 @@ void loop()
   Wire.endTransmission();
   
   /* Setup Digital THERMometer pointer register to 0 */
-     
   Wire.beginTransmission(THERM); 
   val = 0;  
   Wire.write(val);
@@ -125,9 +135,29 @@ void loop()
     Wire.requestFrom(THERM, 2);
     Temperature_H = Wire.read();
     Temperature_L = Wire.read();
+    if(Serial.available() > 0){
+    //read message from the server
+        incomingByte = Serial.read();
+//        Serial.print("receive message: ");
+//        Serial.print(incomingByte);
+        if(incomingByte == 98){
+          IsCel = false;
+        }else if(incomingByte == 97){
+          IsCel = true;
+        }else if(incomingByte == 115){
+          IsStandBy = true;
+        }else if(incomingByte == 101){
+          IsStandBy = false;
+        }  
+    }
     
     /* Calculate temperature */
-    Cal_temp (Decimal, Temperature_H, Temperature_L, IsPositive);
+      Cal_temp (Decimal, Temperature_H, Temperature_L, IsPositive);
+    if(!IsCel){
+      Cel_to_Far(Decimal, Temperature_H, Fah_Decimal, Fah_H);
+    }
+    
+    
     
     /* Display temperature on the serial monitor. 
        Comment out this line if you don't use serial monitor.*/
@@ -137,7 +167,23 @@ void loop()
     UpdateRGB (Temperature_H);
     
     /* Display temperature on the 7-Segment */
-    Dis_7SEG (Decimal, Temperature_H, Temperature_L, IsPositive);
+//    Serial.print(Decimal, DEC);
+//    Serial.print("\n");
+//    Serial.print(Temperature_H);
+//    Serial.print("\n");
+//    Serial.print(Temperature_L);
+//    Serial.print("\n");
+    if(IsStandBy){
+      Dis_NULL();
+    }else{
+      if(IsCel){
+        Dis_7SEG (Decimal, Temperature_H, Temperature_L, IsPositive, IsCel);
+      }else{
+        Dis_7SEG (Fah_Decimal, Fah_H, Temperature_L, IsPositive, IsCel);
+      }
+    }
+
+    
     
     delay (1000);        /* Take temperature read every 1 second */
   }
@@ -169,13 +215,27 @@ void Cal_temp (int& Decimal, byte& High, byte& Low, bool& sign)
   }  
 }
 
+void Cel_to_Far(int& Decimal, byte& High, int& Fah_Decimal, byte& Fah_H){
+  double decimal_double = Decimal;
+  while(decimal_double > 1){
+    decimal_double = decimal_double / 10;
+  }
+  double temp = High + decimal_double;
+  temp = temp * 1.8 + 32;
+  int left = (int)temp;
+  double right_double = temp - left;
+  int right = (int)(right_double * 10000);
+  Fah_Decimal = right;
+  Fah_H = left;
+}
+
 /***************************************************************************
  Function Name: Dis_7SEG
 
  Purpose: 
    Display number on the 7-segment display.
 ****************************************************************************/
-void Dis_7SEG (int Decimal, byte High, byte Low, bool sign)
+void Dis_7SEG (int Decimal, byte High, byte Low, bool sign, bool IsCel)
 {
   byte Digit = 4;                 /* Number of 7-Segment digit */
   byte Number;                    /* Temporary variable hold the number to display */
@@ -220,7 +280,12 @@ void Dis_7SEG (int Decimal, byte High, byte Low, bool sign)
 
   if (Digit > 0)                 /* Display "c" if there is more space on 7-SEG */
   {
-    Send7SEG (Digit,0x58);
+    if(IsCel){
+      Send7SEG (Digit,0x58);
+    }else{
+      Send7SEG(Digit, 0x71); 
+    }
+
     Digit--;
   }
   
@@ -228,6 +293,12 @@ void Dis_7SEG (int Decimal, byte High, byte Low, bool sign)
   {
     Send7SEG (Digit,0x00);    
   }  
+}
+void Dis_NULL(){
+  Send7SEG (4,0x40);
+  Send7SEG (3,0x40);
+  Send7SEG (2,0x40);
+  Send7SEG (1,0x40);
 }
 
 /***************************************************************************
