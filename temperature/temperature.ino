@@ -91,6 +91,7 @@ void loop()
   bool IsPositive;
   bool IsCel = true;
   bool IsStandBy = false;
+  bool IsCount = false;
   
   /* Configure 7-Segment to 12mA segment output current, Dynamic mode, 
      and Digits 1, 2, 3 AND 4 are NOT blanked */
@@ -131,7 +132,7 @@ void loop()
   }
   
   while (1)
-  {
+  { IsCount = false; 
     Wire.requestFrom(THERM, 2);
     Temperature_H = Wire.read();
     Temperature_L = Wire.read();
@@ -148,7 +149,23 @@ void loop()
           IsStandBy = true;
         }else if(incomingByte == 101){
           IsStandBy = false;
+        }else if(incomingByte == 99){
+          IsCount = true;
         }  
+    }
+    if(IsCount){
+       digitalWrite(RED, LOW);
+       digitalWrite(GREEN, LOW);
+       digitalWrite(BLUE, LOW);
+       for(int i = 20; i >= 0; i--){
+          byte high = i / 10;
+          byte low = i % 10;
+          Dis_count_down(high, low); 
+          digitalWrite(GREEN, HIGH);          
+          delay(500);
+          digitalWrite(GREEN, LOW);
+          delay(500); 
+      }
     }
     
     /* Calculate temperature */
@@ -299,6 +316,13 @@ void Dis_NULL(){
   Send7SEG (3,0x40);
   Send7SEG (2,0x40);
   Send7SEG (1,0x40);
+}
+
+void Dis_count_down(byte high, byte low){
+  Send7SEG(4, 0x40);
+  Send7SEG(3, NumberLookup[high]);
+  Send7SEG(2, NumberLookup[low]);
+  Send7SEG(1, 0x40);
 }
 
 /***************************************************************************

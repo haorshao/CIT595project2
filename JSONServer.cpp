@@ -124,6 +124,10 @@ int start_server(int PORT_NUMBER, deque<double>* input, char* arduinoPort)
             string inputMessage = "e";//stand by end request
             sendusb(arduinoPort, inputMessage);
           }
+          if(request[5] == 'd'){
+            string inputMessage = "c";
+            sendusb(arduinoPort, inputMessage);
+          }
           if(request[6] == '8'){
             alertTemp = 20;
             isAlertMod = true;
